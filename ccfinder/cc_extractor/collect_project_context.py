@@ -23,6 +23,15 @@ config_logging(logging.INFO)
     
 ts_parser = load_parser("python", lib_path=os.path.join(os.getenv('PYTHONPATH'), "cc_extractor/build/python-lang-parser.so"))
 
+def convert(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    elif isinstance(obj, dict):
+        return {k: convert(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert(i) for i in obj]
+    else:
+        return obj
 
 class ProjectModuleSet(ModuleSet):
     def __init__(self, path_list):
@@ -157,7 +166,7 @@ def collect_project_context(proj):
             f = str(f)
             project_context["project_context"].append(collect_file_context(f, project_prefix=project_prefix))
         with open(output_file, 'w') as f:
-            f.write(ujson.dumps(project_context, indent=2, ensure_ascii=False))
+            f.write(ujson.dumps(convert(project_context), indent=2, ensure_ascii=False))
     except Exception as e:
         logger.error(f"Error collecting project context: {e}")
 
@@ -166,12 +175,12 @@ def main():
         assert args.input_project is not None
         project_dependencies = analyze_file_dependency(args.input_project)
         with open(args.output, 'w') as f:
-            f.write(ujson.dumps(project_dependencies, indent=2, ensure_ascii=False))
+            f.write(ujson.dumps(convert(project_dependencies), indent=2, ensure_ascii=False))
     elif args.task == "file_context":
         assert args.input_file is not None
         file_context = collect_file_context(args.input_file)
         with open(args.output, 'w') as f:
-            f.write(ujson.dumps(file_context, indent=2, ensure_ascii=False))
+            f.write(ujson.dumps(convert(file_context), indent=2, ensure_ascii=False))
     elif args.task == "project_context":
         assert args.input_project is not None
         collect_project_context((args.input_project, args.output))
